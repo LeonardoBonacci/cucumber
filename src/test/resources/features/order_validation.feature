@@ -5,7 +5,7 @@ Feature: Order Validation - Intentionally Failing
 
   # This scenario ALWAYS FAILS — used to test the Cucumber rerun mechanism.
   # The step deliberately triggers an assertion failure.
-  @failing
+  @failing @now
   Scenario: Reject an order with zero quantity
     Given the order service is available
     When I attempt to place an order for "Monitor" with quantity 0

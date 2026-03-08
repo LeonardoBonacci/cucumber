@@ -12,6 +12,7 @@ import static io.cucumber.junit.platform.engine.Constants.*;
 @SelectPackages("com.demo")
 @ConfigurationParameter(key = GLUE_PROPERTY_NAME, value = "com.demo")
 @ConfigurationParameter(key = FEATURES_PROPERTY_NAME, value = "src/test/resources/features")
+@ConfigurationParameter(key = FILTER_TAGS_PROPERTY_NAME, value = "@now")
 @ConfigurationParameter(key = PLUGIN_PROPERTY_NAME, value = "pretty, html:target/cucumber-reports/cucumber.html, rerun:target/cucumber-reports/rerun.txt")
 @ConfigurationParameter(key = PLUGIN_PUBLISH_QUIET_PROPERTY_NAME, value = "true")
 public class CucumberRunnerTest {
