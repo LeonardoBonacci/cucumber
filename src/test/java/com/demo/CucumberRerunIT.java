@@ -34,7 +34,7 @@ import static io.cucumber.junit.platform.engine.Constants.*;
 @IncludeEngines("cucumber")
 @SelectPackages("com.demo")
 @ConfigurationParameter(key = GLUE_PROPERTY_NAME, value = "com.demo")
-@ConfigurationParameter(key = PLUGIN_PROPERTY_NAME, value = "pretty, html:target/cucumber-reports/rerun-cucumber.html")
+@ConfigurationParameter(key = PLUGIN_PROPERTY_NAME, value = "pretty, html:target/cucumber-reports/rerun-cucumber.html, rerun:target/cucumber-reports/rerun2.txt")
 @ConfigurationParameter(key = PLUGIN_PUBLISH_QUIET_PROPERTY_NAME, value = "true")
 public class CucumberRerunIT {
 }

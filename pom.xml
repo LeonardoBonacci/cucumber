@@ -120,35 +120,99 @@
                             <exportAntProperties>true</exportAntProperties>
                         </configuration>
                     </execution>
+
+                    <!--
+                        PHASE 4: post-integration-test
+                        Read rerun2.txt produced by the first rerun.
+                        If the file is missing or empty (= no failures), set skip.rerun2=true
+                        so the second rerun phase is skipped entirely.
+                    -->
+                    <execution>
+                        <id>prepare-rerun2</id>
+                        <phase>post-integration-test</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <loadfile property="rerun2.features"
+                                          srcFile="target/cucumber-reports/rerun2.txt"
+                                          failonerror="false"/>
+                                <property name="rerun2.features" value=""/>
+                                <condition property="skip.rerun2" value="false" else="true">
+                                    <not>
+                                        <equals arg1="${rerun2.features}" arg2=""/>
+                                    </not>
+                                </condition>
+                                <echo message="[Cucumber Rerun 2] skip.rerun2 = ${skip.rerun2}"/>
+                                <echo message="[Cucumber Rerun 2] rerun2.features = ${rerun2.features}"/>
+                            </target>
+                            <exportAntProperties>true</exportAntProperties>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
 
             <!--
-                PHASE 3: integration-test + verify
+                PHASE 3: integration-test
                 Rerun ONLY the scenarios that failed in Phase 1.
-                The cucumber.features system property points Cucumber at the
-                exact scenario URIs from rerun.txt. If all reruns pass, the
-                build succeeds. If any still fail, failsafe:verify fails the build.
+                Failures are tolerated so the build continues to the third run.
+                The Cucumber rerun plugin writes still-failing scenario locations
+                to target/cucumber-reports/rerun2.txt.
+            -->
+            <!--
+                PHASE 5: verify
+                Rerun ONLY the scenarios that still failed in Phase 3.
+                If any still fail, failsafe:verify fails the build.
             -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <version>${maven-surefire-plugin.version}</version>
                 <configuration>
-                    <skipITs>${skip.rerun}</skipITs>
-                    <includes>
-                        <include>**/*IT.java</include>
-                    </includes>
-                    <systemPropertyVariables>
-                        <cucumber.features>${rerun.features}</cucumber.features>
-                    </systemPropertyVariables>
+                    <!-- Default: skip so any auto-created execution is a no-op -->
+                    <skipITs>true</skipITs>
                 </configuration>
                 <executions>
+                    <!-- First rerun (integration-test phase) — tolerates failures -->
                     <execution>
+                        <id>rerun-1</id>
+                        <goals>
+                            <goal>integration-test</goal>
+                        </goals>
+                        <configuration>
+                            <skipITs>${skip.rerun}</skipITs>
+                            <testFailureIgnore>true</testFailureIgnore>
+                            <includes>
+                                <include>**/CucumberRerunIT.java</include>
+                            </includes>
+                            <systemPropertyVariables>
+                                <cucumber.features>${rerun.features}</cucumber.features>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </execution>
+
+                    <!--
+                        Second rerun (verify phase) — runs still-failing scenarios.
+                        Both integration-test and verify goals in one execution so
+                        verify only checks THIS run's results.
+                    -->
+                    <execution>
+                        <id>rerun-2</id>
+                        <phase>verify</phase>
                         <goals>
                             <goal>integration-test</goal>
                             <goal>verify</goal>
                         </goals>
+                        <configuration>
+                            <skipITs>${skip.rerun2}</skipITs>
+                            <includes>
+                                <include>**/CucumberRerun2IT.java</include>
+                            </includes>
+                            <systemPropertyVariables>
+                                <cucumber.features>${rerun2.features}</cucumber.features>
+                            </systemPropertyVariables>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
