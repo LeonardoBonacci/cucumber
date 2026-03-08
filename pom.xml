@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.4.9</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.demo</groupId>
+    <artifactId>cucumber-rerun-demo</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>cucumber-rerun-demo</name>
+    <description>Demo project to test Cucumber rerun mechanism</description>
+
+    <properties>
+        <java.version>17</java.version>
+        <cucumber.version>7.20.1</cucumber.version>
+        <maven-surefire-plugin.version>3.5.3</maven-surefire-plugin.version>
+    </properties>
+
+    <dependencies>
+        <!-- Spring Boot -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Cucumber -->
+        <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-java</artifactId>
+            <version>${cucumber.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-spring</artifactId>
+            <version>${cucumber.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-junit-platform-engine</artifactId>
+            <version>${cucumber.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- JUnit Platform Suite -->
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-suite</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!--
+                PHASE 1: test
+                Run all Cucumber scenarios. Failures are tolerated so the build
+                continues to the rerun phase. The Cucumber "rerun" plugin writes
+                failed scenario locations to target/cucumber-reports/rerun.txt.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven-surefire-plugin.version}</version>
+                <configuration>
+                    <testFailureIgnore>true</testFailureIgnore>
+                    <excludes>
+                        <exclude>**/*IT.java</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+
+            <!--
+                PHASE 2: pre-integration-test
+                Read rerun.txt produced by Phase 1 into a Maven property.
+                If the file is missing or empty (= no failures), set skip.rerun=true
+                so the failsafe rerun phase is skipped entirely.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>prepare-rerun</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <!-- Try to load rerun.txt; property stays unset if file is missing -->
+                                <loadfile property="rerun.features"
+                                          srcFile="target/cucumber-reports/rerun.txt"
+                                          failonerror="false"/>
+                                <!-- Fallback: set to empty if loadfile did not set it -->
+                                <property name="rerun.features" value=""/>
+                                <!-- Decide whether to skip the rerun -->
+                                <condition property="skip.rerun" value="false" else="true">
+                                    <not>
+                                        <equals arg1="${rerun.features}" arg2=""/>
+                                    </not>
+                                </condition>
+                                <echo message="[Cucumber Rerun] skip.rerun = ${skip.rerun}"/>
+                                <echo message="[Cucumber Rerun] rerun.features = ${rerun.features}"/>
+                            </target>
+                            <exportAntProperties>true</exportAntProperties>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!--
+                PHASE 3: integration-test + verify
+                Rerun ONLY the scenarios that failed in Phase 1.
+                The cucumber.features system property points Cucumber at the
+                exact scenario URIs from rerun.txt. If all reruns pass, the
+                build succeeds. If any still fail, failsafe:verify fails the build.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>${maven-surefire-plugin.version}</version>
+                <configuration>
+                    <skipITs>${skip.rerun}</skipITs>
+                    <includes>
+                        <include>**/*IT.java</include>
+                    </includes>
+                    <systemPropertyVariables>
+                        <cucumber.features>${rerun.features}</cucumber.features>
+                    </systemPropertyVariables>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
